@@ -17,10 +17,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 
-# nchannels 声道
-# sampwidth 样本宽度
-# framerate 帧率，也就是一秒有多少帧
-# nframes 文件一共有多少帧
+
 
 WORK_ROOT = r'.\work'  # 工作目录
 
@@ -30,20 +27,26 @@ def get_index(framerate, min, sec):
 
 
 def pre_deal(file_path):
-    """音频解析，返回音频数据"""
+    """
+    parse the audio file
+    # nchannels 声道
+    # sampwidth 样本宽度
+    # framerate how many frame in one second 帧率，也就是一秒有多少帧
+    # nframes how many frame in audio file 文件一共有多少帧
+    """
     f = wave.open(file_path, 'rb')
     params = f.getparams()
     nchannels, sampwidth, framerate, nframes = params[:4]
-    strData = f.readframes(nframes)  # 读取音频，字符串格式
-    waveData = np.fromstring(strData, dtype=np.int16)  # 将字符串转化为int
+    strData = f.readframes(nframes)
+    waveData = np.fromstring(strData, dtype=np.int16)
 
-    waveData = waveData[::nchannels]  # 根据声道数，转换为单声道
+    waveData = waveData[::nchannels]
     rate = 20.00
-    framerate = framerate / rate  # 降低帧率
-    nframes = nframes / rate  # 降低帧率
+    framerate = framerate / rate  # reduce framerate
+    nframes = nframes / rate  # reduce framerate
     waveData = waveData[::int(rate)]
 
-    # wave幅值归一化
+    # wave normalization
     max_ = float(max(abs(waveData)))
     waveData = waveData / max_
 
@@ -51,7 +54,7 @@ def pre_deal(file_path):
 
 
 def plpot(waveData):
-    """画图"""
+    """plot"""
     time = [i for i, v in enumerate(waveData)]
     plt.plot(time, waveData)
     plt.xlabel("Time")
@@ -61,7 +64,10 @@ def plpot(waveData):
 
 
 def mp3towav(file_path, to_file_path):
-    """mp3文件转wav文件"""
+    """
+    exchange mp3 format to wav
+    mp3文件转wav文件
+    """
     if os.path.exists(to_file_path):
         return to_file_path
     from pydub import AudioSegment
@@ -78,6 +84,7 @@ class LeaningTest():
 
     @classmethod
     def load_model(cls):
+        """load model obj from pickle"""
         cls.model = pickle_utils.load('knn.model.pkl')
 
     @classmethod
@@ -88,6 +95,11 @@ class LeaningTest():
     @classmethod
     def sample_cnt(cls, sample):
         """
+        Convert the sample data to  the count for each interval.
+        For example, from [0.1,0.1,0.8] to [2,1]
+        2 is the count of the interval [0,0.5]
+        1 is the count of the interval [0.5,1)
+
         转换样本数据，返回每个区间的计数。
         例如从[0.1,0.1,0.8]转换为[2,1]
         2是[0,0.5)区间的计数
@@ -109,6 +121,7 @@ class LeaningTest():
     @classmethod
     def get_sample(cls, i):
         """
+        Get the data for machine learning
         获取用于机器学习的数据
         return [([100,200],0)]
         """
@@ -138,7 +151,10 @@ class LeaningTest():
 
     @classmethod
     def to_wav(cls, file_path):
-        """转换mp3为wav"""
+        """
+        exchange mp3 format to wav
+        转换mp3为wav
+        """
         if 'mp3' in file_path:
             to_file_path = file_path.replace('mp3', 'wav')
             mp3towav(file_path, to_file_path)
@@ -184,6 +200,7 @@ class LeaningTest():
     @classmethod
     def train(cls, train_datas_sets, train_labels_set, test_datas_set, test_labels_set):
         """
+        train result：
         训练结果：
         score <class 'sklearn.svm.classes.SVC'> 0.7203252032520325
         score <class 'sklearn.linear_model.logistic.LogisticRegression'> 0.8886178861788618
@@ -204,8 +221,8 @@ class LeaningTest():
         for mechine in [svm.SVC, LogisticRegression, LinearRegression, tree.DecisionTreeClassifier,
                         neighbors.KNeighborsClassifier, MLPClassifier, GaussianNB]:
             clf = mechine()
-            clf.fit(train_datas_sets, train_labels_set)  # 训练
-            score = clf.score(test_datas_set, test_labels_set)  # 预测测试集，并计算正确率
+            clf.fit(train_datas_sets, train_labels_set)  #  训练
+            score = clf.score(test_datas_set, test_labels_set)  #  预测测试集，并计算正确率
             print 'score', mechine, score
 
     @classmethod
@@ -268,7 +285,10 @@ class LeaningTest():
 
     @classmethod
     def cut_songs(cls, root_path):
-        """分割某个文件夹下面的所有歌曲"""
+        """
+        Split all the songs under a folder
+        分割某个文件夹下面的所有歌曲
+        """
         del_path = r'%s\to_del' % WORK_ROOT
         for f in os.listdir(root_path):
             if 'mp3' in f and 'cut' not in f:
@@ -276,6 +296,8 @@ class LeaningTest():
                 if os.path.exists(file_path + '.cut.mp3'):
                     print 'exist', file_path.decode('gbk') + '.cut.mp3'
                     continue
+                # Since pydub does not support Windows' Chinese path,
+                # So I can only put the source files into a temporary English directory, then split and remove the temporary files
                 # 由于pydub不支持windows的中文路径，所以只能把源文件已到一个临时的英文目录，然后执行分割 然后把临时文件移走
                 tmp_file_path = '%s\\test.mp3' % WORK_ROOT  # pydub不支持中文地址，只能这样
                 tmp_wav_path = tmp_file_path.replace('mp3', 'wav')
@@ -285,6 +307,7 @@ class LeaningTest():
                 shutil.move(tmp_file_path, del_path + '\\del1_' + f)
                 shutil.move(tmp_wav_path, del_path + '\\del3_' + f)
                 try:
+                    # It is possible that the split point could not be found, resulting in no split, so add try
                     # 有可能找不到分割点，导致没有分割，所以加上try
                     shutil.copy(tmp_to_file_path, file_path + '.cut.mp3')
                     shutil.move(tmp_to_file_path, del_path + '\\del2_' + f)
@@ -295,7 +318,10 @@ class LeaningTest():
 
 
 def test_audio_to_data():
-    """测试脚本，转换音频文件为数据，并画图"""
+    """
+    Test scripts, convert audio files to data, and draw pictures
+    测试脚本，转换音频文件为数据，并画图
+    """
     file_path = r'%s\test\chg\0.mp3' % WORK_ROOT
     file_path = mp3towav(file_path, file_path.replace('mp3', 'wav'))
     data, _, _ = pre_deal(file_path)
@@ -303,12 +329,18 @@ def test_audio_to_data():
 
 
 def test_train():
-    """测试脚本，训练数据"""
+    """
+    Test scripts, training data
+    测试脚本，训练数据
+    """
     LeaningTest.train_wrapper()
 
 
 def test_cut_song():
-    """测试脚本，分割歌曲"""
+    """
+    Test scripts, split audio file
+    测试脚本，分割歌曲
+    """
     LeaningTest.load_model()
     root_path = r'%s\predict' % WORK_ROOT
     LeaningTest.cut_songs(root_path)
